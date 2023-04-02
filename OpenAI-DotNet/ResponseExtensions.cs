@@ -32,7 +32,7 @@ namespace OpenAI
 
             if (!response.IsSuccessStatusCode)
             {
-                throw new HttpRequestException(message: $"{methodName} Failed! HTTP status code: {response.StatusCode} | Response body: {responseAsString}", null, statusCode: response.StatusCode);
+                throw new OpenAIException(methodName, responseAsString, response);
             }
 
             return responseAsString;
@@ -43,7 +43,7 @@ namespace OpenAI
             if (!response.IsSuccessStatusCode)
             {
                 var responseAsString = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                throw new HttpRequestException(message: $"{methodName} Failed! HTTP status code: {response.StatusCode} | Response body: {responseAsString}", null, statusCode: response.StatusCode);
+                throw new OpenAIException(methodName, responseAsString, response);
             }
         }
 
