@@ -4,10 +4,11 @@ namespace OpenAI.Chat
 {
     public sealed class Message
     {
-        public Message(Role role, string content)
+        public Message(Role role, string content, string name = null)
         {
             Role = role;
             Content = content;
+            Name = name;
         }
 
         [JsonInclude]
@@ -17,6 +18,10 @@ namespace OpenAI.Chat
         [JsonInclude]
         [JsonPropertyName("content")]
         public string Content { get; private set; }
+        
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonPropertyName("name")]
+        public string Name { get; private set; }
 
         public static implicit operator string(Message message) => message.Content;
     }
