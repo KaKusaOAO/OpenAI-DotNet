@@ -125,10 +125,18 @@ OPENAI_KEY=sk-aaaabbbbbccccddddd
 ORGANIZATION=org-yourOrganizationId
 ```
 
-You can also load the file directly with known path by calling a static method in Authentication:
+You can also load the configuration file directly with known path by calling static methods in `OpenAIAuthentication`:
+
+- Loads the default `.openai` config in the specified directory:
 
 ```csharp
-var api = new OpenAIClient(OpenAIAuthentication.LoadFromDirectory("your/path/to/.openai"));;
+var api = new OpenAIClient(OpenAIAuthentication.LoadFromDirectory("path/to/your/directory"));
+```
+
+- Loads the configuration file from a specific path. File does not need to be named `.openai` as long as it conforms to the json format:
+
+```csharp
+var api = new OpenAIClient(OpenAIAuthentication.LoadFromPath("path/to/your/file.json"));
 ```
 
 #### Use System Environment Variables
@@ -248,15 +256,21 @@ public partial class Program
 
 Once you have set up your proxy server, your end users can now make authenticated requests to your proxy api instead of directly to the OpenAI API. The proxy server will handle authentication and forward requests to the OpenAI API, ensuring that your API keys and other sensitive information remain secure.
 
-### [Models](https://beta.openai.com/docs/api-reference/models)
+### [Models](https://platform.openai.com/docs/api-reference/models)
 
-List and describe the various models available in the API. You can refer to the [Models documentation](https://beta.openai.com/docs/models) to understand what models are available and the differences between them.
+List and describe the various models available in the API. You can refer to the [Models documentation](https://platform.openai.com/docs/models) to understand what models are available and the differences between them.
 
 Also checkout [model endpoint compatibility](https://platform.openai.com/docs/models/model-endpoint-compatibility) to understand which models work with which endpoints.
 
+To specify a custom model not pre-defined in this library:
+
+```csharp
+var model = new Model("model-id");
+```
+
 The Models API is accessed via `OpenAIClient.ModelsEndpoint`
 
-#### [List models](https://beta.openai.com/docs/api-reference/models/list)
+#### [List models](https://platform.openai.com/docs/api-reference/models/list)
 
 Lists the currently available models, and provides basic information about each one such as the owner and availability.
 
@@ -270,7 +284,7 @@ foreach (var model in models)
 }
 ```
 
-#### [Retrieve model](https://beta.openai.com/docs/api-reference/models/retrieve)
+#### [Retrieve model](https://platform.openai.com/docs/api-reference/models/retrieve)
 
 Retrieves a model instance, providing basic information about the model such as the owner and permissions.
 
@@ -280,7 +294,7 @@ var model = await api.ModelsEndpoint.GetModelDetailsAsync("text-davinci-003");
 Console.WriteLine(model.ToString());
 ```
 
-#### [Delete Fine Tuned Model](https://beta.openai.com/docs/api-reference/fine-tunes/delete-model)
+#### [Delete Fine Tuned Model](https://platform.openai.com/docs/api-reference/fine-tunes/delete-model)
 
 Delete a fine-tuned model. You must have the Owner role in your organization.
 
@@ -290,7 +304,7 @@ var result = await api.ModelsEndpoint.DeleteFineTuneModelAsync("your-fine-tuned-
 Assert.IsTrue(result);
 ```
 
-### [Completions](https://beta.openai.com/docs/api-reference/completions)
+### [Completions](https://platform.openai.com/docs/api-reference/completions)
 
 Given a prompt, the model will return one or more predicted completions, and can also return the probabilities of alternative tokens at each position.
 
@@ -342,34 +356,43 @@ Creates a completion for the chat message
 
 ```csharp
 var api = new OpenAIClient();
-var chatPrompts = new List<ChatPrompt>
+var messages = new List<Message>
 {
-    new ChatPrompt("system", "You are a helpful assistant."),
-    new ChatPrompt("user", "Who won the world series in 2020?"),
-    new ChatPrompt("assistant", "The Los Angeles Dodgers won the World Series in 2020."),
-    new ChatPrompt("user", "Where was it played?"),
+    new Message(Role.System, "You are a helpful assistant."),
+    new Message(Role.User, "Who won the world series in 2020?"),
+    new Message(Role.Assistant, "The Los Angeles Dodgers won the World Series in 2020."),
+    new Message(Role.User, "Where was it played?"),
 };
-var chatRequest = new ChatRequest(chatPrompts);
+var chatRequest = new ChatRequest(messages);
 var result = await api.ChatEndpoint.GetCompletionAsync(chatRequest);
-Console.WriteLine(result.FirstChoice);
+Console.WriteLine($"{result.FirstChoice.Message.Role}: {result.FirstChoice.Message.Content}");
 ```
 
 ##### [Chat Streaming](https://platform.openai.com/docs/api-reference/chat/create#chat/create-stream)
 
 ```csharp
 var api = new OpenAIClient();
-var chatPrompts = new List<ChatPrompt>
+var messages = new List<Message>
 {
-    new ChatPrompt("system", "You are a helpful assistant."),
-    new ChatPrompt("user", "Who won the world series in 2020?"),
-    new ChatPrompt("assistant", "The Los Angeles Dodgers won the World Series in 2020."),
-    new ChatPrompt("user", "Where was it played?"),
+    new Message(Role.System, "You are a helpful assistant."),
+    new Message(Role.User, "Who won the world series in 2020?"),
+    new Message(Role.Assistant, "The Los Angeles Dodgers won the World Series in 2020."),
+    new Message(Role.User, "Where was it played?"),
 };
-var chatRequest = new ChatRequest(chatPrompts, Model.GPT3_5_Turbo);
-
+var chatRequest = new ChatRequest(messages, Model.GPT3_5_Turbo, number: 2);
 await api.ChatEndpoint.StreamCompletionAsync(chatRequest, result =>
 {
-    Console.WriteLine(result.FirstChoice);
+    foreach (var choice in result.Choices.Where(choice => choice.Delta?.Content != null))
+    {
+        // Partial response content
+        Console.WriteLine(choice.Delta.Content);
+    }
+
+    foreach (var choice in result.Choices.Where(choice => choice.Message?.Content != null))
+    {
+        // Completed response content
+        Console.WriteLine($"{choice.Message.Role}: {choice.Message.Content}");
+    }
 });
 ```
 
@@ -377,28 +400,37 @@ Or if using [`IAsyncEnumerable{T}`](https://docs.microsoft.com/en-us/dotnet/api/
 
 ```csharp
 var api = new OpenAIClient();
-var chatPrompts = new List<ChatPrompt>
+var messages = new List<Message>
 {
-    new ChatPrompt("system", "You are a helpful assistant."),
-    new ChatPrompt("user", "Who won the world series in 2020?"),
-    new ChatPrompt("assistant", "The Los Angeles Dodgers won the World Series in 2020."),
-    new ChatPrompt("user", "Where was it played?"),
+    new Message(Role.System, "You are a helpful assistant."),
+    new Message(Role.User, "Who won the world series in 2020?"),
+    new Message(Role.Assistant, "The Los Angeles Dodgers won the World Series in 2020."),
+    new Message(Role.User, "Where was it played?"),
 };
-var chatRequest = new ChatRequest(chatPrompts, Model.GPT3_5_Turbo);
-
+var chatRequest = new ChatRequest(messages, Model.GPT4); // gpt4 access required
 await foreach (var result in api.ChatEndpoint.StreamCompletionEnumerableAsync(chatRequest))
 {
-    Console.WriteLine(result.FirstChoice);
+    foreach (var choice in result.Choices.Where(choice => choice.Delta?.Content != null))
+    {
+        // Partial response content
+        Console.WriteLine(choice.Delta.Content);
+    }
+
+    foreach (var choice in result.Choices.Where(choice => choice.Message?.Content != null))
+    {
+        // Completed response content
+        Console.WriteLine($"{choice.Message.Role}: {choice.Message.Content}");
+    }
 }
 ```
 
-### [Edits](https://beta.openai.com/docs/api-reference/edits)
+### [Edits](https://platform.openai.com/docs/api-reference/edits)
 
 Given a prompt and an instruction, the model will return an edited version of the prompt.
 
 The Edits API is accessed via `OpenAIClient.EditsEndpoint`
 
-#### [Create Edit](https://beta.openai.com/docs/api-reference/edits/create)
+#### [Create Edit](https://platform.openai.com/docs/api-reference/edits/create)
 
 Creates a new edit for the provided input, instruction, and parameters using the provided input and instruction.
 
@@ -409,26 +441,25 @@ var result = await api.EditsEndpoint.CreateEditAsync(request);
 Console.WriteLine(result);
 ```
 
-### [Embeddings](https://beta.openai.com/docs/api-reference/embeddings)
+### [Embeddings](https://platform.openai.com/docs/api-reference/embeddings)
 
 Get a vector representation of a given input that can be easily consumed by machine learning models and algorithms.
 
-Related guide: [Embeddings](https://beta.openai.com/docs/guides/embeddings)
+Related guide: [Embeddings](https://platform.openai.com/docs/guides/embeddings)
 
 The Edits API is accessed via `OpenAIClient.EmbeddingsEndpoint`
 
-#### [Create Embeddings](https://beta.openai.com/docs/api-reference/embeddings/create)
+#### [Create Embeddings](https://platform.openai.com/docs/api-reference/embeddings/create)
 
 Creates an embedding vector representing the input text.
 
 ```csharp
 var api = new OpenAIClient();
-var model = await api.ModelsEndpoint.GetModelDetailsAsync("text-embedding-ada-002");
-var result = await api.EmbeddingsEndpoint.CreateEmbeddingAsync("The food was delicious and the waiter...", model);
+var result = await api.EmbeddingsEndpoint.CreateEmbeddingAsync("The food was delicious and the waiter...", Models.Embedding_Ada_002);
 Console.WriteLine(result);
 ```
 
-### [Audio](https://beta.openai.com/docs/api-reference/audio)
+### [Audio](https://platform.openai.com/docs/api-reference/audio)
 
 Converts audio into text.
 
@@ -456,13 +487,13 @@ var result = await api.AudioEndpoint.CreateTranslationAsync(request);
 Console.WriteLine(result);
 ```
 
-### [Images](https://beta.openai.com/docs/api-reference/images)
+### [Images](https://platform.openai.com/docs/api-reference/images)
 
 Given a prompt and/or an input image, the model will generate a new image.
 
 The Images API is accessed via `OpenAIClient.ImagesEndpoint`
 
-#### [Create Image](https://beta.openai.com/docs/api-reference/images/create)
+#### [Create Image](https://platform.openai.com/docs/api-reference/images/create)
 
 Creates an image given a prompt.
 
@@ -477,7 +508,7 @@ foreach (var result in results)
 }
 ```
 
-#### [Edit Image](https://beta.openai.com/docs/api-reference/images/create-edit)
+#### [Edit Image](https://platform.openai.com/docs/api-reference/images/create-edit)
 
 Creates an edited or extended image given an original image and a prompt.
 
@@ -492,7 +523,7 @@ foreach (var result in results)
 }
 ```
 
-#### [Create Image Variation](https://beta.openai.com/docs/api-reference/images/create-variation)
+#### [Create Image Variation](https://platform.openai.com/docs/api-reference/images/create-variation)
 
 Creates a variation of a given image.
 
@@ -507,13 +538,13 @@ foreach (var result in results)
 }
 ```
 
-### [Files](https://beta.openai.com/docs/api-reference/files)
+### [Files](https://platform.openai.com/docs/api-reference/files)
 
 Files are used to upload documents that can be used with features like [Fine-tuning](#fine-tuning).
 
 The Files API is accessed via `OpenAIClient.FilesEndpoint`
 
-#### [List Files](https://beta.openai.com/docs/api-reference/files/list)
+#### [List Files](https://platform.openai.com/docs/api-reference/files/list)
 
 Returns a list of files that belong to the user's organization.
 
@@ -527,7 +558,7 @@ foreach (var file in files)
 }
 ```
 
-#### [Upload File](https://beta.openai.com/docs/api-reference/files/upload)
+#### [Upload File](https://platform.openai.com/docs/api-reference/files/upload)
 
 Upload a file that contains document(s) to be used across various endpoints/features. Currently, the size of all the files uploaded by one organization can be up to 1 GB. Please contact us if you need to increase the storage limit.
 
@@ -537,7 +568,7 @@ var fileData = await api.FilesEndpoint.UploadFileAsync("path/to/your/file.jsonl"
 Console.WriteLine(fileData.Id);
 ```
 
-#### [Delete File](https://beta.openai.com/docs/api-reference/files/delete)
+#### [Delete File](https://platform.openai.com/docs/api-reference/files/delete)
 
 Delete a file.
 
@@ -547,7 +578,7 @@ var result = await api.FilesEndpoint.DeleteFileAsync(fileData);
 Assert.IsTrue(result);
 ```
 
-#### [Retrieve File Info](https://beta.openai.com/docs/api-reference/files/retrieve)
+#### [Retrieve File Info](https://platform.openai.com/docs/api-reference/files/retrieve)
 
 Returns information about a specific file.
 
@@ -557,7 +588,7 @@ var fileData = await GetFileInfoAsync(fileId);
 Console.WriteLine($"{fileData.Id} -> {fileData.Object}: {fileData.FileName} | {fileData.Size} bytes");
 ```
 
-#### [Download File Content](https://beta.openai.com/docs/api-reference/files/retrieve-content)
+#### [Download File Content](https://platform.openai.com/docs/api-reference/files/retrieve-content)
 
 Downloads the specified file.
 
@@ -568,15 +599,15 @@ Console.WriteLine(downloadedFilePath);
 Assert.IsTrue(File.Exists(downloadedFilePath));
 ```
 
-### [Fine Tuning](https://beta.openai.com/docs/api-reference/fine-tunes)
+### [Fine Tuning](https://platform.openai.com/docs/api-reference/fine-tunes)
 
 Manage fine-tuning jobs to tailor a model to your specific training data.
 
-Related guide: [Fine-tune models](https://beta.openai.com/docs/guides/fine-tuning)
+Related guide: [Fine-tune models](https://platform.openai.com/docs/guides/fine-tuning)
 
 The Files API is accessed via `OpenAIClient.FineTuningEndpoint`
 
-#### [Create Fine Tune Job](https://beta.openai.com/docs/api-reference/fine-tunes/create)
+#### [Create Fine Tune Job](https://platform.openai.com/docs/api-reference/fine-tunes/create)
 
 Creates a job that fine-tunes a specified model from a given dataset.
 
@@ -589,7 +620,7 @@ var fineTuneJob = await api.FineTuningEndpoint.CreateFineTuneJobAsync(request);
 Console.WriteLine(fineTuneJob.Id);
 ```
 
-#### [List Fine Tune Jobs](https://beta.openai.com/docs/api-reference/fine-tunes/list)
+#### [List Fine Tune Jobs](https://platform.openai.com/docs/api-reference/fine-tunes/list)
 
 List your organization's fine-tuning jobs.
 
@@ -603,7 +634,7 @@ foreach (var job in fineTuneJobs)
 }
 ```
 
-#### [Retrieve Fine Tune Job Info](https://beta.openai.com/docs/api-reference/fine-tunes/retrieve)
+#### [Retrieve Fine Tune Job Info](https://platform.openai.com/docs/api-reference/fine-tunes/retrieve)
 
 Gets info about the fine-tune job.
 
@@ -613,7 +644,7 @@ var result = await api.FineTuningEndpoint.RetrieveFineTuneJobInfoAsync(fineTuneJ
 Console.WriteLine($"{result.Id} -> {result.Status}");
 ```
 
-#### [Cancel Fine Tune Job](https://beta.openai.com/docs/api-reference/fine-tunes/cancel)
+#### [Cancel Fine Tune Job](https://platform.openai.com/docs/api-reference/fine-tunes/cancel)
 
 Immediately cancel a fine-tune job.
 
@@ -623,7 +654,7 @@ var result = await api.FineTuningEndpoint.CancelFineTuneJobAsync(fineTuneJob);
 Assert.IsTrue(result);
 ```
 
-#### [List Fine Tune Events](https://beta.openai.com/docs/api-reference/fine-tunes/events)
+#### [List Fine Tune Events](https://platform.openai.com/docs/api-reference/fine-tunes/events)
 
 Get fine-grained status updates for a fine-tune job.
 
@@ -633,7 +664,7 @@ var fineTuneEvents = await api.FineTuningEndpoint.ListFineTuneEventsAsync(fineTu
 Console.WriteLine($"{fineTuneJob.Id} -> status: {fineTuneJob.Status} | event count: {fineTuneEvents.Count}");
 ```
 
-#### [Stream Fine Tune Events](https://beta.openai.com/docs/api-reference/fine-tunes/events#fine-tunes/events-stream)
+#### [Stream Fine Tune Events](https://platform.openai.com/docs/api-reference/fine-tunes/events#fine-tunes/events-stream)
 
 ```csharp
 var api = new OpenAIClient();
@@ -653,15 +684,15 @@ await foreach (var fineTuneEvent in api.FineTuningEndpoint.StreamFineTuneEventsE
 }
 ```
 
-### [Moderations](https://beta.openai.com/docs/api-reference/moderations)
+### [Moderations](https://platform.openai.com/docs/api-reference/moderations)
 
 Given a input text, outputs if the model classifies it as violating OpenAI's content policy.
 
-Related guide: [Moderations](https://beta.openai.com/docs/guides/moderation)
+Related guide: [Moderations](https://platform.openai.com/docs/guides/moderation)
 
 The Moderations API can be accessed via `OpenAIClient.ModerationsEndpoint`
 
-#### [Create Moderation](https://beta.openai.com/docs/api-reference/moderations/create)
+#### [Create Moderation](https://platform.openai.com/docs/api-reference/moderations/create)
 
 Classifies if text violates OpenAI's Content Policy.
 

@@ -1,4 +1,4 @@
-﻿using OpenAI.Models;
+﻿using OpenAI.Extensions;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -7,7 +7,7 @@ namespace OpenAI.Embeddings
 {
     /// <summary>
     /// Get a vector representation of a given input that can be easily consumed by machine learning models and algorithms.<br/>
-    /// <see href="https://beta.openai.com/docs/guides/embeddings"/>
+    /// <see href="https://platform.openai.com/docs/guides/embeddings"/>
     /// </summary>
     public sealed class EmbeddingsEndpoint : BaseEndPoint
     {
@@ -33,7 +33,7 @@ namespace OpenAI.Embeddings
         /// A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse.
         /// </param>
         /// <returns><see cref="EmbeddingsResponse"/></returns>
-        public async Task<EmbeddingsResponse> CreateEmbeddingAsync(string input, Model model = null, string user = null)
+        public async Task<EmbeddingsResponse> CreateEmbeddingAsync(string input, string model = null, string user = null)
             => await CreateEmbeddingAsync(new EmbeddingsRequest(input, model, user)).ConfigureAwait(false);
 
         /// <summary>
@@ -52,7 +52,7 @@ namespace OpenAI.Embeddings
         /// A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse.
         /// </param>
         /// <returns><see cref="EmbeddingsResponse"/></returns>
-        public async Task<EmbeddingsResponse> CreateEmbeddingAsync(IEnumerable<string> input, Model model = null, string user = null)
+        public async Task<EmbeddingsResponse> CreateEmbeddingAsync(IEnumerable<string> input, string model = null, string user = null)
             => await CreateEmbeddingAsync(new EmbeddingsRequest(input, model, user)).ConfigureAwait(false);
 
         /// <summary>

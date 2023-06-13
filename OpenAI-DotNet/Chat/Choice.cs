@@ -4,6 +4,21 @@ namespace OpenAI.Chat
 {
     public sealed class Choice
     {
+        public Choice() { }
+
+        public Choice(
+            Message message,
+            Delta delta,
+            string finishReason,
+            int index)
+            : this()
+        {
+            Message = message;
+            Delta = delta;
+            FinishReason = finishReason;
+            Index = index;
+        }
+
         [JsonInclude]
         [JsonPropertyName("message")]
         public Message Message { get; private set; }
@@ -20,7 +35,7 @@ namespace OpenAI.Chat
         [JsonPropertyName("index")]
         public int Index { get; private set; }
 
-        public override string ToString() => Message?.Content ?? Delta.Content;
+        public override string ToString() => Message?.ToString() ?? Delta?.ToString() ?? string.Empty;
 
         public static implicit operator string(Choice choice) => choice.ToString();
     }

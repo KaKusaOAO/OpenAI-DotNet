@@ -1,8 +1,6 @@
-using OpenAI.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace OpenAI.Chat
@@ -70,7 +68,7 @@ namespace OpenAI.Chat
         /// </param>
         public ChatRequest(
             IEnumerable<Message> messages,
-            Model model = null,
+            string model = null,
             double? temperature = null,
             double? topP = null,
             int? number = null,
@@ -81,7 +79,7 @@ namespace OpenAI.Chat
             Dictionary<string, double> logitBias = null,
             string user = null)
         {
-            Model = model ?? Models.Model.GPT3_5_Turbo;
+            Model = string.IsNullOrWhiteSpace(model) ? Models.Model.GPT3_5_Turbo : model;
 
             if (!Model.Contains("turbo") &&
                 !Model.Contains("gpt-4"))
@@ -106,21 +104,6 @@ namespace OpenAI.Chat
             LogitBias = logitBias;
             User = user;
         }
-
-        [Obsolete("Use ChatRequest(IEnumerable<Message> messages) instead")]
-        public ChatRequest(
-            IEnumerable<ChatPrompt> messages,
-            Model model = null,
-            double? temperature = null,
-            double? topP = null,
-            int? number = null,
-            string[] stops = null,
-            int? maxTokens = null,
-            double? presencePenalty = null,
-            double? frequencyPenalty = null,
-            Dictionary<string, double> logitBias = null,
-            string user = null)
-        => throw new NotImplementedException();
 
         /// <summary>
         /// ID of the model to use. Currently, only gpt-3.5-turbo and gpt-3.5-turbo-0301 are supported.

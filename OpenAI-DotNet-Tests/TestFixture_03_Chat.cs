@@ -1,8 +1,8 @@
 ﻿using NUnit.Framework;
 using OpenAI.Chat;
-using OpenAI.Models;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace OpenAI.Tests
@@ -20,12 +20,16 @@ namespace OpenAI.Tests
                 new Message(Role.Assistant, "The Los Angeles Dodgers won the World Series in 2020."),
                 new Message(Role.User, "Where was it played?"),
             };
-            var chatRequest = new ChatRequest(messages, Model.GPT3_5_Turbo);
+            var chatRequest = new ChatRequest(messages, number: 2);
             var result = await OpenAIClient.ChatEndpoint.GetCompletionAsync(chatRequest);
             Assert.IsNotNull(result);
-            Assert.NotNull(result.Choices);
-            Assert.NotZero(result.Choices.Count);
-            Console.WriteLine(result.FirstChoice);
+            Assert.IsNotNull(result.Choices);
+            Assert.IsTrue(result.Choices.Count == 2);
+
+            foreach (var choice in result.Choices)
+            {
+                Console.WriteLine($"[{choice.Index}] {choice.Message.Role}: {choice.Message.Content} | Finish Reason: {choice.FinishReason}");
+            }
         }
 
         [Test]
@@ -39,18 +43,27 @@ namespace OpenAI.Tests
                 new Message(Role.Assistant, "The Los Angeles Dodgers won the World Series in 2020."),
                 new Message(Role.User, "Where was it played?"),
             };
-            var chatRequest = new ChatRequest(messages, Model.GPT3_5_Turbo);
-            var allContent = new List<string>();
-
-            await OpenAIClient.ChatEndpoint.StreamCompletionAsync(chatRequest, result =>
+            var chatRequest = new ChatRequest(messages, number: 2);
+            var finalResult = await OpenAIClient.ChatEndpoint.StreamCompletionAsync(chatRequest, result =>
             {
                 Assert.IsNotNull(result);
-                Assert.NotNull(result.Choices);
+                Assert.IsNotNull(result.Choices);
                 Assert.NotZero(result.Choices.Count);
-                allContent.Add(result.FirstChoice);
+
+                foreach (var choice in result.Choices.Where(choice => choice.Delta?.Content != null))
+                {
+                    Console.WriteLine($"[{choice.Index}] {choice.Delta.Content}");
+                }
+
+                foreach (var choice in result.Choices.Where(choice => choice.Message?.Content != null))
+                {
+                    Console.WriteLine($"[{choice.Index}] {choice.Message.Role}: {choice.Message.Content} | Finish Reason: {choice.FinishReason}");
+                }
             });
 
-            Console.WriteLine(string.Join(string.Empty, allContent));
+            Assert.IsNotNull(finalResult);
+            Assert.IsNotNull(finalResult.Choices);
+            Assert.IsTrue(finalResult.Choices.Count == 2);
         }
 
         [Test]
@@ -64,18 +77,23 @@ namespace OpenAI.Tests
                 new Message(Role.Assistant, "The Los Angeles Dodgers won the World Series in 2020."),
                 new Message(Role.User, "Where was it played?"),
             };
-            var chatRequest = new ChatRequest(messages, Model.GPT3_5_Turbo);
-            var allContent = new List<string>();
-
+            var chatRequest = new ChatRequest(messages, number: 2);
             await foreach (var result in OpenAIClient.ChatEndpoint.StreamCompletionEnumerableAsync(chatRequest))
             {
                 Assert.IsNotNull(result);
-                Assert.NotNull(result.Choices);
+                Assert.IsNotNull(result.Choices);
                 Assert.NotZero(result.Choices.Count);
-                allContent.Add(result.FirstChoice);
-            }
 
-            Console.WriteLine(string.Join(string.Empty, allContent));
+                foreach (var choice in result.Choices.Where(choice => choice.Delta?.Content != null))
+                {
+                    Console.WriteLine($"[{choice.Index}] {choice.Delta.Content}");
+                }
+
+                foreach (var choice in result.Choices.Where(choice => choice.Message?.Content != null))
+                {
+                    Console.WriteLine($"[{choice.Index}] {choice.Message.Role}: {choice.Message.Content} | Finish Reason: {choice.FinishReason}");
+                }
+            }
         }
     }
 }

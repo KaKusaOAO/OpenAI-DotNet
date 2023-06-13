@@ -1,4 +1,4 @@
-﻿using OpenAI.Models;
+﻿using OpenAI.Extensions;
 using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
@@ -9,7 +9,7 @@ namespace OpenAI.Moderations
     /// <summary>
     /// The moderation endpoint is a tool you can use to check whether content complies with OpenAI's content policy.
     /// Developers can thus identify content that our content policy prohibits and take action, for instance by filtering it.<br/>
-    /// <see href="https://beta.openai.com/docs/api-reference/moderations"/>
+    /// <see href="https://platform.openai.com/docs/api-reference/moderations"/>
     /// </summary>
     public sealed class ModerationsEndpoint : BaseEndPoint
     {
@@ -33,7 +33,7 @@ namespace OpenAI.Moderations
         /// <returns>
         /// True, if the text has been flagged by the model as violating OpenAI's content policy.
         /// </returns>
-        public async Task<bool> GetModerationAsync(string input, Model model = null)
+        public async Task<bool> GetModerationAsync(string input, string model = null)
         {
             var result = await CreateModerationAsync(new ModerationsRequest(input, model)).ConfigureAwait(false);
 
